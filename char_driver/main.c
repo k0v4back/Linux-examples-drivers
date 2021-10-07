@@ -1,12 +1,21 @@
+#include <linux/module.h>
 #include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/kernel.h>
 #include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/kdev_t.h>
+#include <linux/uaccess.h>
 
 //Number of devices(Minor devices)
 #define NUM_DEV 3
 
+#define DEV_MEM_SIZE 512
+
 #define DRIVER_NAME "mychardev"
+
+static int mychardev_open(struct inode *inode, struct file *file);
+static int mychardev_release(struct inode *inode, struct file *file);
+static ssize_t mychardev_read(struct file *file, char __user *buf, size_t count, loff_t *f_pos);
+static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos);
 
 /* File operations of the driver */
 static const struct file_operations mychardev_fops = 
@@ -88,6 +97,69 @@ static void __exit mychardev_cleanup(void)
     class_destroy(mychardev_class);
 
     unregister_chrdev_region(MKDEV(mychardev_major_num, 0), MINORMASK);
+}
+
+
+static int mychardev_open(struct inode *inode, struct file *file)
+{
+    printk("Open was successful\n");
+    return 0;
+}
+
+static int mychardev_release(struct inode *inode, struct file *file)
+{
+    printk("Close was successful\n");
+    return 0;
+}
+
+static ssize_t mychardev_read(struct file *file, char __user *buf, size_t count, loff_t *f_pos)
+{
+    printk("Read requested for %zu bytes\n ", count);
+    printk("Current file position: = %lld\n", *f_pos);
+
+    /* Check the 'count' variable */
+    if((*f_pos + count) > DEV_MEM_SIZE)
+        count = DEV_MEM_SIZE - *f_pos;
+
+    /* Copy to user */
+    if(copy_to_user(buff, &device_buffer[*f_pos], count))
+        return -EFAULT;
+
+    /* Update the current file position */
+    *f_pos += count;
+
+    printk("Number of bytes successfully read = %zu \n", count);
+    printk("Update file position = %lld \n", *f_pos);
+
+    /* Num of bytes which have been successfully read */
+    return count;
+}
+
+static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos)
+{
+    printk("Write requested for %zu bytes\n ", count);
+    printk("Current file position: = %lld\n", *f_pos);
+
+    /* Check the 'count' variable */
+    if((*f_pos + count) > DEV_MEM_SIZE)
+        count = DEV_MEM_SIZE - *f_pos;
+
+    /* If buff is empty */
+    if(!count)
+        return -ENOMEM;
+
+    /* Copy from user */
+    if(copy_from_user(&device_buffer[*f_pos], buff, count))
+        return -EFAULT;
+
+    /* Update the current file position */
+    *f_pos += count;
+
+    printk("Number of bytes successfully written = %zu \n", count);
+    printk("Update file position = %lld \n", *f_pos);
+
+    /* Num of bytes which have been successfully written*/
+    return count;
 }
 
 module_init(mychardev_init);
