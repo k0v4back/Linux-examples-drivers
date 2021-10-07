@@ -32,6 +32,13 @@ static struct class *mychardriver_class = NULL;
 /* array of mychardriver_device_data for */
 static struct mychardriver_device_data mychardriver_data[NUM_DEV];
 
+/* Set permissions to the character driver */
+static int mychardriver_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+    add_event_var(env, "DEVMODE=%#o", 0666);
+    return 0;
+}
+
 static int __init mychardriver_init(void)
 {
     dev_t device_number;
@@ -48,6 +55,9 @@ static int __init mychardriver_init(void)
     /* Get a major number of device driver */
     mychardriver_device_data = MAJOR(device_number);
 
+    mychardriver_class = class_create(THIS_MODULE, DRIVER_NAME);
+    mychardriver_class->dev_uevent = mychardriver_uevent; 
+
     /* create sysfs class */
     mychardriver_class = class_create(THIS_MODULE, DRIVER_NAME);
 
@@ -62,7 +72,7 @@ static int __init mychardriver_init(void)
         cdev_add(&mychardriver_data[i].cdev, MKDEV(mychardriver_major_num, i), 1);
 
         /*C reate device node /dev/mychardev-x where "x" is "i", equal to the Minor number */
-        device_create(mychardriver_class, NULL, MKDEV(dev_major, i), NULL, "DRIVER_NAME-%d", i);
+        device_create(mychardriver_class, NULL, MKDEV(mychardriver_major_num, i), NULL, "DRIVER_NAME-%d", i);
 
 
     return 0;
@@ -70,7 +80,14 @@ static int __init mychardriver_init(void)
 
 static void __exit mychardriver_cleanup(void)
 {
+    for(unsigned i = 0; i < NUM_DEV; i++){
+        device_destroy(mychardriver_class, MKDEV(mychardriver_major_num, i));
+    }
 
+    class_unregister(mychardriver_class);
+    class_destroy(mychardriver_class);
+
+    unregister_chrdev_region(MKDEV(mychardriver_major_num, 0), MINORMASK);
 }
 
 module_init(mychardriver_init);
