@@ -5,140 +5,26 @@
 #include <linux/kdev_t.h>
 #include <linux/uaccess.h>
 
-//Number of devices(Minor devices)
-#define NUM_DEV 3
-
 #define DEV_MEM_SIZE 512
 
-#define DRIVER_NAME "mychardev"
+char device_buffer[DEV_MEM_SIZE];
 
-static int mychardev_open(struct inode *inode, struct file *file);
-static int mychardev_release(struct inode *inode, struct file *file);
-static ssize_t mychardev_read(struct file *file, char __user *buf, size_t count, loff_t *f_pos);
-static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos);
+/* This is device number */
+dev_t device_number;
 
-/* File operations of the driver */
-static const struct file_operations mychardev_fops = 
+/* Cdev variable */
+struct cdev chardriver_cdev;
+
+int chardriver_open(struct inode *inode, struct file *filp)
 {
-    .owner   = THIS_MODULE,
-    .open    = mychardev_open,
-    .release = mychardev_release,
-    .read    = mychardev_read,
-    .write   = mychardev_write
-};
-
-/* Device data holder */
-struct mychardev_device_data {
-        struct cdev cdev;
-};
-
-/* global storage for device Major number */
-static int mychardev_major_num = 0;
-
-/* sysfs class structure */
-static struct class *mychardev_class = NULL;
-
-/* array of mychardev_device_data for */
-static struct mychardev_device_data mychardev_data[NUM_DEV];
-
-/* Set permissions to the character driver */
-static int mychardev_uevent(struct device *dev, struct kobj_uevent_env *env)
-{
-    add_event_var(env, "DEVMODE=%#o", 0666);
+    printk(KERN_ALERT "Open was successful\n");
     return 0;
 }
 
-static int __init mychardev_init(void)
+ssize_t chardriver_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
 {
-    dev_t device_number;
-
-    /* Dynamically allocate a device number */
-    int err = alloc_chrdev_region(&device_number, 0, NUM_DEV, DRIVER_NAME);   
-    if(err < 0){
-        printk(KERN_ALERT "mychardev : failed to allocate major number\n");
-        return err;
-    }else{
-        printk(KERN_INFO "mychardev: mjor number allocated succesful\n");
-    }
-
-    /* Get a major number of device driver */
-    mychardev_device_data = MAJOR(device_number);
-
-    mychardev_class = class_create(THIS_MODULE, DRIVER_NAME);
-    mychardev_class->dev_uevent = mychardev_uevent; 
-
-    /* create sysfs class */
-    mychardev_class = class_create(THIS_MODULE, DRIVER_NAME);
-
-    /* Create necessary number of the devices */
-    for(unsigned i = 0; i < NUM_DEV; i++)
-    {
-        /* Init new device */
-        cdev_init(&mychardev_data[i].cdev, &mychardev_fops);
-        mychardev_data[i].cdev.owner = THIS_MODULE;
-
-        /* Add device to system where "i" is a Minor number of the new device */
-        cdev_add(&mychardev_data[i].cdev, MKDEV(mychardev_major_num, i), 1);
-
-        /*C reate device node /dev/mychardev-x where "x" is "i", equal to the Minor number */
-        device_create(mychardev_class, NULL, MKDEV(mychardev_major_num, i), NULL, "DRIVER_NAME-%d", i);
-
-
-    return 0;
-}
-
-static void __exit mychardev_cleanup(void)
-{
-    for(unsigned i = 0; i < NUM_DEV; i++){
-        device_destroy(mychardev_class, MKDEV(mychardev_major_num, i));
-    }
-
-    class_unregister(mychardev_class);
-    class_destroy(mychardev_class);
-
-    unregister_chrdev_region(MKDEV(mychardev_major_num, 0), MINORMASK);
-}
-
-
-static int mychardev_open(struct inode *inode, struct file *file)
-{
-    printk("Open was successful\n");
-    return 0;
-}
-
-static int mychardev_release(struct inode *inode, struct file *file)
-{
-    printk("Close was successful\n");
-    return 0;
-}
-
-static ssize_t mychardev_read(struct file *file, char __user *buf, size_t count, loff_t *f_pos)
-{
-    printk("Read requested for %zu bytes\n ", count);
-    printk("Current file position: = %lld\n", *f_pos);
-
-    /* Check the 'count' variable */
-    if((*f_pos + count) > DEV_MEM_SIZE)
-        count = DEV_MEM_SIZE - *f_pos;
-
-    /* Copy to user */
-    if(copy_to_user(buff, &device_buffer[*f_pos], count))
-        return -EFAULT;
-
-    /* Update the current file position */
-    *f_pos += count;
-
-    printk("Number of bytes successfully read = %zu \n", count);
-    printk("Update file position = %lld \n", *f_pos);
-
-    /* Num of bytes which have been successfully read */
-    return count;
-}
-
-static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos)
-{
-    printk("Write requested for %zu bytes\n ", count);
-    printk("Current file position: = %lld\n", *f_pos);
+    printk(KERN_ALERT "Write requested for %zu bytes\n ", count);
+    printk(KERN_ALERT "Current file position: = %lld\n", *f_pos);
 
     /* Check the 'count' variable */
     if((*f_pos + count) > DEV_MEM_SIZE)
@@ -155,16 +41,88 @@ static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t
     /* Update the current file position */
     *f_pos += count;
 
-    printk("Number of bytes successfully written = %zu \n", count);
-    printk("Update file position = %lld \n", *f_pos);
+    printk(KERN_ALERT "Number of bytes successfully written = %zu \n", count);
+    printk(KERN_ALERT "Update file position = %lld \n", *f_pos);
 
     /* Num of bytes which have been successfully written*/
     return count;
 }
 
-module_init(mychardev_init);
-module_exit(mychardev_cleanup);
+ssize_t chardriver_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
+{
+    printk(KERN_ALERT "Read requested for %zu bytes\n ", count);
+    printk(KERN_ALERT "Current file position: = %lld\n", *f_pos);
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("k0v4 (Kosolapov Vadim <vadkos33@outlook.com>");
-MODULE_DESCRIPTION("Simple character driver");
+    /* Check the 'count' variable */
+    if((*f_pos + count) > DEV_MEM_SIZE)
+        count = DEV_MEM_SIZE - *f_pos;
+
+    /* Copy to user */
+    if(copy_to_user(buff, &device_buffer[*f_pos], count))
+        return -EFAULT;
+
+    /* Update the current file position */
+    *f_pos += count;
+
+    printk(KERN_ALERT "Number of bytes successfully read = %zu \n", count);
+    printk(KERN_ALERT "Update file position = %lld \n", *f_pos);
+
+    /* Num of bytes which have been successfully read */
+    return count;
+}
+
+int chardriver_release(struct inode *inode, struct file *filp)
+{
+    printk(KERN_ALERT "Close was successful\n");
+    return 0;
+}
+
+/* File operations of the driver */
+struct file_operations chardriver_fops = 
+{
+    .open = chardriver_open,
+    .write = chardriver_write,
+    .read = chardriver_read,
+    .release = chardriver_release,
+    .owner = THIS_MODULE
+};
+
+struct class *class_chardriver;
+struct device *device_chardriver;
+
+static int __init chardriver_init(void)
+{
+    /* Dynamically allocate a device number */
+    alloc_chrdev_region(&device_number, 0, 1, "chardriver"); 
+
+    printk(KERN_ALERT "%s : Device number <major>:<minor> = %d:%d \n", __func__, MAJOR(device_number), MINOR(device_number)); 
+
+    /* Register a device cdev struct with VFS */
+    cdev_init(&chardriver_cdev, &chardriver_fops);
+    chardriver_cdev.owner = THIS_MODULE;
+    cdev_add(&chardriver_cdev, device_number, 1);
+
+    /* Create device class under /sys/class */
+    class_chardriver = class_create(THIS_MODULE, "PCD class");
+
+    /*Populate the sysfs with device information */
+    device_chardriver = device_create(class_chardriver, NULL, device_number, NULL, "pcd");
+
+    printk(KERN_ALERT"Module init was successful \n");
+    printk(KERN_ALERT "Char driver init\n");
+    return 0;
+}
+
+static void __exit chardriver_cleanup(void)
+{
+    device_destroy(class_chardriver, device_number);
+    class_destroy(class_chardriver);
+    cdev_del(&chardriver_cdev);
+    unregister_chrdev_region(device_number, 1);
+    printk(KERN_ALERT "Module unloaded \n");
+    printk(KERN_ALERT "Char driver cleanup\n");
+}
+
+MODULE_LICENSE("Dual BCD/GPL");
+module_init(chardriver_init);
+module_exit(chardriver_cleanup);
