@@ -7,13 +7,50 @@
 
 #define DEV_MEM_SIZE 512
 
-char device_buffer[DEV_MEM_SIZE];
+int chardriver_open(struct inode *inode, struct file *filp);
+ssize_t chardriver_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
+ssize_t chardriver_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
+int chardriver_release(struct inode *inode, struct file *filp);
 
-/* This is device number */
+char device_buffer[DEV_MEM_SIZE];
 dev_t device_number;
 
-/* Cdev variable */
 struct cdev chardriver_cdev;
+struct class *class_chardriver;
+struct device *device_chardriver;
+
+/* File operations of the driver */
+struct file_operations chardriver_fops = 
+{
+    .open = chardriver_open,
+    .write = chardriver_write,
+    .read = chardriver_read,
+    .release = chardriver_release,
+    .owner = THIS_MODULE
+};
+
+static int __init chardriver_init(void)
+{
+    /* Dynamically allocate a device number */
+    alloc_chrdev_region(&device_number, 0, 1, "chardriver"); 
+
+    printk(KERN_ALERT "%s : Device number <major>:<minor> = %d:%d \n", __func__, MAJOR(device_number), MINOR(device_number)); 
+
+    /* Register a device cdev struct with VFS */
+    cdev_init(&chardriver_cdev, &chardriver_fops);
+    chardriver_cdev.owner = THIS_MODULE;
+    cdev_add(&chardriver_cdev, device_number, 1);
+
+    /* Create device class under /sys/class */
+    class_chardriver = class_create(THIS_MODULE, "PCD class");
+
+    /*Populate the sysfs with device information */
+    device_chardriver = device_create(class_chardriver, NULL, device_number, NULL, "pcd");
+
+    printk(KERN_ALERT"Module init was successful \n");
+    printk(KERN_ALERT "Char driver init\n");
+    return 0;
+}
 
 int chardriver_open(struct inode *inode, struct file *filp)
 {
@@ -74,42 +111,6 @@ ssize_t chardriver_read(struct file *filp, char __user *buff, size_t count, loff
 int chardriver_release(struct inode *inode, struct file *filp)
 {
     printk(KERN_ALERT "Close was successful\n");
-    return 0;
-}
-
-/* File operations of the driver */
-struct file_operations chardriver_fops = 
-{
-    .open = chardriver_open,
-    .write = chardriver_write,
-    .read = chardriver_read,
-    .release = chardriver_release,
-    .owner = THIS_MODULE
-};
-
-struct class *class_chardriver;
-struct device *device_chardriver;
-
-static int __init chardriver_init(void)
-{
-    /* Dynamically allocate a device number */
-    alloc_chrdev_region(&device_number, 0, 1, "chardriver"); 
-
-    printk(KERN_ALERT "%s : Device number <major>:<minor> = %d:%d \n", __func__, MAJOR(device_number), MINOR(device_number)); 
-
-    /* Register a device cdev struct with VFS */
-    cdev_init(&chardriver_cdev, &chardriver_fops);
-    chardriver_cdev.owner = THIS_MODULE;
-    cdev_add(&chardriver_cdev, device_number, 1);
-
-    /* Create device class under /sys/class */
-    class_chardriver = class_create(THIS_MODULE, "PCD class");
-
-    /*Populate the sysfs with device information */
-    device_chardriver = device_create(class_chardriver, NULL, device_number, NULL, "pcd");
-
-    printk(KERN_ALERT"Module init was successful \n");
-    printk(KERN_ALERT "Char driver init\n");
     return 0;
 }
 
