@@ -34,7 +34,7 @@ static int __init chardriver_init(void)
     /* Dynamically allocate a device number */
     alloc_chrdev_region(&device_number, 0, 1, "chardriver"); 
 
-    printk(KERN_ALERT "%s : Device number <major>:<minor> = %d:%d \n", __func__, MAJOR(device_number), MINOR(device_number)); 
+    printk(KERN_INFO "%s : Device number <major>:<minor> = %d:%d \n", __func__, MAJOR(device_number), MINOR(device_number)); 
 
     /* Register a device cdev struct with VFS */
     cdev_init(&chardriver_cdev, &chardriver_fops);
@@ -42,26 +42,26 @@ static int __init chardriver_init(void)
     cdev_add(&chardriver_cdev, device_number, 1);
 
     /* Create device class under /sys/class */
-    class_chardriver = class_create(THIS_MODULE, "PCD class");
+    class_chardriver = class_create(THIS_MODULE, "chardriver class");
 
     /*Populate the sysfs with device information */
-    device_chardriver = device_create(class_chardriver, NULL, device_number, NULL, "pcd");
+    device_chardriver = device_create(class_chardriver, NULL, device_number, NULL, "chardriver");
 
-    printk(KERN_ALERT"Module init was successful \n");
-    printk(KERN_ALERT "Char driver init\n");
+    printk(KERN_INFO"Module init was successful \n");
+    printk(KERN_INFO "Char driver init\n");
     return 0;
 }
 
 int chardriver_open(struct inode *inode, struct file *filp)
 {
-    printk(KERN_ALERT "Open was successful\n");
+    printk(KERN_INFO "Open was successful\n");
     return 0;
 }
 
 ssize_t chardriver_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos)
 {
-    printk(KERN_ALERT "Write requested for %zu bytes\n ", count);
-    printk(KERN_ALERT "Current file position: = %lld\n", *f_pos);
+    printk(KERN_INFO "Write requested for %zu bytes\n ", count);
+    printk(KERN_INFO "Current file position: = %lld\n", *f_pos);
 
     /* Check the 'count' variable */
     if((*f_pos + count) > DEV_MEM_SIZE)
@@ -78,8 +78,8 @@ ssize_t chardriver_write(struct file *filp, const char __user *buff, size_t coun
     /* Update the current file position */
     *f_pos += count;
 
-    printk(KERN_ALERT "Number of bytes successfully written = %zu \n", count);
-    printk(KERN_ALERT "Update file position = %lld \n", *f_pos);
+    printk(KERN_INFO "Number of bytes successfully written = %zu \n", count);
+    printk(KERN_INFO "Update file position = %lld \n", *f_pos);
 
     /* Num of bytes which have been successfully written*/
     return count;
@@ -87,8 +87,8 @@ ssize_t chardriver_write(struct file *filp, const char __user *buff, size_t coun
 
 ssize_t chardriver_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos)
 {
-    printk(KERN_ALERT "Read requested for %zu bytes\n ", count);
-    printk(KERN_ALERT "Current file position: = %lld\n", *f_pos);
+    printk(KERN_INFO "Read requested for %zu bytes\n ", count);
+    printk(KERN_INFO "Current file position: = %lld\n", *f_pos);
 
     /* Check the 'count' variable */
     if((*f_pos + count) > DEV_MEM_SIZE)
@@ -101,8 +101,8 @@ ssize_t chardriver_read(struct file *filp, char __user *buff, size_t count, loff
     /* Update the current file position */
     *f_pos += count;
 
-    printk(KERN_ALERT "Number of bytes successfully read = %zu \n", count);
-    printk(KERN_ALERT "Update file position = %lld \n", *f_pos);
+    printk(KERN_INFO "Number of bytes successfully read = %zu \n", count);
+    printk(KERN_INFO "Update file position = %lld \n", *f_pos);
 
     /* Num of bytes which have been successfully read */
     return count;
@@ -110,7 +110,7 @@ ssize_t chardriver_read(struct file *filp, char __user *buff, size_t count, loff
 
 int chardriver_release(struct inode *inode, struct file *filp)
 {
-    printk(KERN_ALERT "Close was successful\n");
+    printk(KERN_INFO "Close was successful\n");
     return 0;
 }
 
@@ -120,10 +120,12 @@ static void __exit chardriver_cleanup(void)
     class_destroy(class_chardriver);
     cdev_del(&chardriver_cdev);
     unregister_chrdev_region(device_number, 1);
-    printk(KERN_ALERT "Module unloaded \n");
-    printk(KERN_ALERT "Char driver cleanup\n");
+    printk(KERN_INFO "Module unloaded \n");
+    printk(KERN_INFO "Char driver cleanup\n");
 }
 
-MODULE_LICENSE("Dual BCD/GPL");
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Kosolapov Vadim");
+
 module_init(chardriver_init);
 module_exit(chardriver_cleanup);
