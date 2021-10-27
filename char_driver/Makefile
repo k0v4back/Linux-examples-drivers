@@ -1,6 +1,6 @@
 obj-m := main.o
 
-HOST_KERN_DIR = /lib/modules/5.4.0-84-generic/build/
+HOST_KERN_DIR = /lib/modules/$(shell uname -r)/build/
 
 all:
 	make -C $(HOST_KERN_DIR) M=$(PWD) modules

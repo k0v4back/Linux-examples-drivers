@@ -31,25 +31,49 @@ struct file_operations chardriver_fops =
 
 static int __init chardriver_init(void)
 {
+    int ret;
+
     /* Dynamically allocate a device number */
-    alloc_chrdev_region(&device_number, 0, 1, "chardriver"); 
+    ret = alloc_chrdev_region(&device_number, 0, 1, "chardriver"); 
+    if(ret < 0) goto out;
 
     printk(KERN_INFO "%s : Device number <major>:<minor> = %d:%d \n", __func__, MAJOR(device_number), MINOR(device_number)); 
 
     /* Register a device cdev struct with VFS */
     cdev_init(&chardriver_cdev, &chardriver_fops);
     chardriver_cdev.owner = THIS_MODULE;
-    cdev_add(&chardriver_cdev, device_number, 1);
+    ret = cdev_add(&chardriver_cdev, device_number, 1);
+    if(ret < 0){
+        printk(KERN_ERR "cdev_add() faild!");
+        goto unreg_chrdev;
+    }
 
     /* Create device class under /sys/class */
     class_chardriver = class_create(THIS_MODULE, "chardriver class");
+    if(IS_ERR(class_chardriver)){
+        printk(KERN_ERR "class_create() faild!");
+        goto cdev_del;
+    }
 
-    /*Populate the sysfs with device information */
+    /* Populate the sysfs with device information. udevd will create /dev/chardriver */
     device_chardriver = device_create(class_chardriver, NULL, device_number, NULL, "chardriver");
+    if(IS_ERR(device_chardriver)){
+        printk(KERN_ERR "Device create faild \n");
+        goto class_del;
+    }
 
     printk(KERN_INFO"Module init was successful \n");
     printk(KERN_INFO "Char driver init\n");
     return 0;
+
+class_del:
+    class_destroy(class_chardriver);
+cdev_del:
+    cdev_del(&chardriver_cdev);
+unreg_chrdev:
+    unregister_chrdev_region(device_number, 1);
+out:
+    return ret;
 }
 
 int chardriver_open(struct inode *inode, struct file *filp)
