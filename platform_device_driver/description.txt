@@ -1,0 +1,14 @@
+In order for platform devices to work, it is necessary 
+that the system has a driver for loading platform devices. 
+When the platform device is loaded into the system, the mapping 
+mechanism is triggered and finds by the name field which driver 
+the platform device corresponds to. If the mechanism has found a driver 
+for the platform device, then the platform device will be loaded into the system.
+The same thing works if there are platform devices in the system and when
+a driver is added the mapping mechanism is triggered
+
+
+I will create 2 kernel modules: Platform driver and Platform device setup
+Platform device setup I will use to add a platform device 
+In Platform device file i will create a 3 platform devices with required 
+information and after register platform devices with the Linux kernel
