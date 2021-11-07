@@ -72,7 +72,7 @@ static int __init platform_device_init(void)
     platform_device_register(&platform_device_2); 
     platform_device_register(&platform_device_3); 
 
-    pr_info("Platform device init was successful");
+    pr_info("Platform device module loaded");
 
     return 0;
 }
@@ -83,7 +83,7 @@ static void __exit platform_device_exit(void)
     platform_device_unregister(&platform_device_2);
     platform_device_unregister(&platform_device_3);
 
-    pr_info("Platform device exit was successful");
+    pr_info("Platform device module unloaded");
 }
 
 module_init(platform_device_init);
