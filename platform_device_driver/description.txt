@@ -8,7 +8,7 @@ The same thing works if there are platform devices in the system and when
 a driver is added the mapping mechanism is triggered
 
 
-I will create 2 kernel modules: Platform driver and Platform device setup
-Platform device setup I will use to add a platform device 
+I will create 2 kernel modules: Platform driver and Platform device
+Platform driver I will use to add a platform device 
 In Platform device file i will create a 3 platform devices with required 
 information and after register platform devices with the Linux kernel
