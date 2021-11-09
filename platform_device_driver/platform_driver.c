@@ -20,6 +20,26 @@ struct cdev platform_driver_cdev;
 struct class *class_platform_driver;
 struct device *device_platform_driver;
 
+/* Device private data structure */
+struct device_private_data
+{
+    struct platform_device_data pdata;
+    char *buffer;
+    dev_t dev_num;
+    struct cdev cdev;
+};
+
+/* Driver private data structure */
+struct driver_private_data
+{
+    int total_devices;
+    dev_t device_number_base;
+    struct class *class_chardriver;
+    struct device *device_chardriver;
+};
+
+struct driver_private_data driver_data;
+
 /* File operations of the driver */
 struct file_operations platform_driver_fops = 
 {
@@ -43,6 +63,25 @@ struct platform_driver platform_driver =
 
 static int __init platform_driver_init(void)
 {
+    int ret;
+
+    /* Dynamically allocate a device number for all devices  */
+    ret = alloc_chrdev_region(&driver_data.device_number_base,0, MAX_DEVICES, "devices"); 
+    if(ret < 0){
+        pr_err("Alloc chrdev faild\n");
+        return ret;
+    }
+
+    /* Create device class under /sys/class  */
+    driver_data.class_chardriver = class_create(THIS_MODULE, "driver_data_class");
+    if(IS_ERR(driver_data.class_chardriver)){
+        pr_err("Class creation failed\n");
+        ret = PTR_ERR(driver_data.class_chardriver);
+        unregister_chrdev_region(driver_data.device_number_base, MAX_DEVICES);
+        return ret; 
+    }
+
+    /* Register a platform driver */
     platform_driver_register(&platform_driver);
     pr_info("Platform driver loaded\n");
 
@@ -51,7 +90,14 @@ static int __init platform_driver_init(void)
 
 static void __exit platform_driver_cleanup(void)
 {
+    /* Unregister the platform driver */
     platform_driver_unregister(&platform_driver);
+
+    /* Class destroy */
+    class_destroy(driver_data.class_chardriver);
+
+    /* Unregister device number for all devices */
+    unregister_chrdev_region(driver_data.device_number_base, MAX_DEVICES);
     pr_info("Platform driver unloaded\n");
 }
 
