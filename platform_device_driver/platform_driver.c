@@ -5,6 +5,8 @@
 #include <linux/kdev_t.h>
 #include <linux/uaccess.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
+
 #include "platform.h"
 
 int platform_driver_open(struct inode *inode, struct file *filp);
@@ -14,7 +16,7 @@ int platform_driver_release(struct inode *inode, struct file *filp);
 loff_t platform_driver_llseek(struct file *filp, loff_t offset, int whence);
 int platform_driver_probe_func(struct platform_device *);
 int platform_driver_remove_func(struct platform_device *);
-int check_permission(int dev_perm, int acc_mode);
+int check_permission(int dev_permission, int acc_mode);
 
 struct cdev platform_driver_cdev;
 struct class *class_platform_driver;
@@ -101,9 +103,9 @@ static void __exit platform_driver_cleanup(void)
     pr_info("Platform driver unloaded\n");
 }
 
-int check_permission(int dev_perm, int acc_mode)
+int check_permission(int dev_permission, int acc_mode)
 {
-    if(dev_perm == RDWR)
+    if(dev_permission == RDWR)
         return 0;
 
     return 0;
@@ -112,8 +114,53 @@ int check_permission(int dev_perm, int acc_mode)
 /* when the match will detected prob function will be called */
 int platform_driver_probe_func(struct platform_device *pdev)
 {
+    int ret;
+
+    struct device_private_data *dev_data;
+    struct platform_device_data *pdata;// temporary variable for platform data
+
+    /* Get the platform data */
+    pdata = pdev->dev.platform_data;
+    if(!pdata){
+        pr_err("No platform data available\n");
+        ret = -EINVAL;
+        goto out;
+    }
+    
+    /* Dynamically allocate memory for device private data */
+    dev_data = kzalloc(sizeof(struct device_private_data), GFP_KERNEL);
+    if(!dev_data){
+        pr_info("Cannot allocate memory \n");
+        ret = -ENOMEM;
+        goto out;
+    }
+
+    dev_data->pdata.size = pdata->size;
+    dev_data->pdata.permission = pdata->permission;
+    dev_data->pdata.serial_number = pdata->serial_number;
+
+    pr_info("Device serial_number = %s\n", dev_data->pdata.serial_number);
+    pr_info("Device size = %d\n", dev_data->pdata.size);
+    pr_info("Device permission = %d\n", dev_data->pdata.permission);
+
+
+    /* Dynamically allocate memory for device buffer using size
+     * information from the platform data */
+
+    /* Get the device number */
+
+    /* Do cdev init and cdev add */
+
+    /* Create device file for the detected platform device */
+
+    /* Error handling */
+
     pr_info("A device is detected\n");
     return 0;
+
+out:
+    pr_err("Device probe failed\n");
+    return ret;
 }
 
 /* Gets called when device removed from the system */
