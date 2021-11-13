@@ -155,6 +155,9 @@ int platform_driver_probe_func(struct platform_device *pdev)
         goto dev_data_free;
     }
 
+    /* Save the device private data pointer in platform device structure */
+    pdev->dev.driver_data = dev_data;
+
     /* Get the device number */
     dev_data->dev_num = driver_data.device_number_base + pdev->id; 
 
@@ -174,6 +177,7 @@ int platform_driver_probe_func(struct platform_device *pdev)
         goto cdev_del;
     }
 
+    driver_data.total_devices++;
 
     pr_info("Probe function was successful\n");
     return 0;
@@ -193,6 +197,21 @@ out:
 /* Gets called when device removed from the system */
 int platform_driver_remove_func(struct platform_device *pdev)
 {
+    /* Get device data */
+    struct device_private_data *dev_data = dev_get_drvdata(&pdev->dev);
+
+    /* Remove device that was created with device_create() */
+    device_destroy(driver_data.class_chardriver, dev_data->dev_num);
+    
+    /* Remove cdev entry from the system */
+    cdev_del(&dev_data->cdev);
+
+    /* Free the memory held by the device */
+    kfree(dev_data->buffer);
+    kfree(dev_data);
+    
+    driver_data.total_devices--;
+
     pr_info("A device is removed\n");
     return 0;
 }
