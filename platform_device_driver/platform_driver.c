@@ -119,6 +119,8 @@ int platform_driver_probe_func(struct platform_device *pdev)
     struct device_private_data *dev_data;
     struct platform_device_data *pdata;// temporary variable for platform data
 
+    pr_info("A device is detected\n");
+
     /* Get the platform data */
     pdata = pdev->dev.platform_data;
     if(!pdata){
@@ -146,18 +148,43 @@ int platform_driver_probe_func(struct platform_device *pdev)
 
     /* Dynamically allocate memory for device buffer using size
      * information from the platform data */
+    dev_data->buffer = kzalloc(dev_data->pdata.size, GFP_KERNEL);
+    if(!dev_data->buffer){
+        pr_info("Cannot allocate memory \n");
+        ret = -ENOMEM;
+        goto dev_data_free;
+    }
 
     /* Get the device number */
+    dev_data->dev_num = driver_data.device_number_base + pdev->id; 
 
     /* Do cdev init and cdev add */
+    cdev_init(&dev_data->cdev, &platform_driver_fops); 
+    dev_data->cdev.owner = THIS_MODULE;
+    ret = cdev_add(&dev_data->cdev, dev_data->dev_num, 1);
+    if(ret < 0){
+        pr_err("Cdev add was fail\n");
+        goto buffer_free;
+    }
 
     /* Create device file for the detected platform device */
+    driver_data.device_chardriver = device_create(driver_data.class_chardriver, NULL, dev_data->dev_num, NULL, "chardriver-%d", pdev->id);
+    if(IS_ERR(driver_data.device_chardriver)){
+        pr_info("Device create faild \n");
+        goto cdev_del;
+    }
 
-    /* Error handling */
 
-    pr_info("A device is detected\n");
+    pr_info("Probe function was successful\n");
     return 0;
 
+    /* Error handling */
+cdev_del:
+    cdev_del(&dev_data->cdev);
+buffer_free:
+    kfree(dev_data->buffer);
+dev_data_free:
+    kfree(dev_data);
 out:
     pr_err("Device probe failed\n");
     return ret;
