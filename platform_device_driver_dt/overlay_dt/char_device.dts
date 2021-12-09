@@ -1,0 +1,28 @@
+/dts-v1/;
+/plugin/;
+
+/{
+    fragment@0 {
+        target = <&chardev0>;
+        __overlay__ {
+            status = "disabled";
+        };
+    };
+
+    fragment@1 {
+        target = <&chardev1>;
+        __overlay__ {
+            status = "disabled";
+        };
+    };
+
+    fragment@2 {
+        target = <&chardev2>;
+        __overlay__ {
+            status = "ok";
+            org,size = <2048>;
+            org,device-serial-number = "CHAR_DEV_SERIAL_3_changed_overlay";
+        };
+    };
+
+};

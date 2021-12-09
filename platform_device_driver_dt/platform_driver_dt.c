@@ -138,7 +138,8 @@ int check_permission(int dev_permission, int acc_mode)
 /* Check device tree */
 struct platform_device_data * char_driver_get_platform_dt(struct device *dev)
 {
-    /* struct platform_device -> struct device -> struct device_node -> of_node  */
+    /* struct platform_device -> struct device -> struct device_node -> of_node  
+     * of_node will consist data from dt file */
     struct device_node * dev_node = dev->of_node;
     struct platform_device_data * pdata;// temporary variable for platform data
 

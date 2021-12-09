@@ -16,5 +16,6 @@ help:
 
 host:
 	make -C $(HOST_KERN_DIR) M=$(PWD) modules
+
 copy-dtb:
 	scp $(KERN_DIR)arch/arm/boot/dts/am335x-boneblack.dtb debian@192.168.1.184:/home/debian/drivers
