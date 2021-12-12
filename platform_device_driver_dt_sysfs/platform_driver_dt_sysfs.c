@@ -13,6 +13,57 @@ struct file_operations platform_driver_fops =
     .owner = THIS_MODULE
 };
 
+ssize_t show_serial_num(struct device *dev, struct device_attribute *attr,char *buf)
+{
+    /* get access to the device private data */
+    struct pcdev_private_data *dev_data = dev_get_drvdata(dev->parent);
+
+    return sprintf(buf,"%s\n",dev_data->pdata.serial_number);
+
+}
+
+ssize_t show_max_size(struct device *dev, struct device_attribute *attr,char *buf)
+{
+    /* get access to the device private data */
+    struct pcdev_private_data *dev_data = dev_get_drvdata(dev->parent);
+
+    return sprintf(buf,"%d\n",dev_data->pdata.size);
+
+}
+
+ssize_t store_max_size(struct device *dev, struct device_attribute *attr,const char *buf, size_t count)
+{
+    long result;
+    int ret;
+    struct pcdev_private_data *dev_data = dev_get_drvdata(dev->parent);
+
+    ret = kstrtol(buf,10,&result);
+    if(ret)
+        return ret;
+
+    dev_data->pdata.size = result;
+
+    dev_data->buffer = krealloc(dev_data->buffer,dev_data->pdata.size,GFP_KERNEL);
+
+    return count;
+}
+
+/*create 2 variables of struct device_attribute */
+static DEVICE_ATTR(max_size, S_IRUGO|S_IWUSR, show_max_size, store_max_size);
+static DEVICE_ATTR(serial_num, S_IRUGO, show_serial_num, NULL);
+
+int platform_driver_sysfs_create_files(struct device *pcd_dev)
+{
+    int ret;
+#if 0
+    ret = sysfs_create_file(&pcd_dev->kobj,&dev_attr_max_size.attr);
+    if(ret)
+        return ret;
+    return sysfs_create_file(&pcd_dev->kobj,&dev_attr_serial_num.attr);
+#endif 
+    return sysfs_create_group(&pcd_dev->kobj, &pcd_attr_group);
+}
+
 /* represents methods of platform_driver */
 struct platform_driver char_platform_driver = 
 {
@@ -178,6 +229,13 @@ int platform_driver_probe_func(struct platform_device *pdev)
     }
 
     driver_data.total_devices++;
+
+    /* Create attribute file */
+    ret = platform_driver_sysfs_create_files(pcdrv_data.device_pcd);
+    if(ret){
+        device_destroy(pcdrv_data.class_pcd,dev_data->dev_num);
+        return ret;
+    }
 
     dev_info(dev, "Probe function was successful\n");
     return 0;
