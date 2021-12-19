@@ -8,7 +8,7 @@
 #include <linux/device.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
-
+#include <linux/gpio/consumer.h>
 
 int gpio_sysfs_probe(struct platform_device *);
 int gpio_sysfs_remove(struct platform_device *);
@@ -29,6 +29,7 @@ struct device *device_platform_driver;
 struct device_private_data
 {
     char label[20];
+    struct gpio_desc *desc;
 };
 
 /* Driver private data structure */
@@ -77,6 +78,7 @@ int gpio_sysfs_probe(struct platform_device *pdev)
 {
     const char *name;
     int i = 0;
+    int ret;
 
     struct device *dev = &pdev->dev;
 
@@ -97,6 +99,8 @@ int gpio_sysfs_probe(struct platform_device *pdev)
             return -ENOMEM;
         }
 
+        /* Read gpio properties from device tree file */
+
         /* Fill with data device private data structer from device tree node */
         if(of_property_read_string(child, "label", &name)){
             dev_warn(dev, "Missing lable information \n");
@@ -104,6 +108,23 @@ int gpio_sysfs_probe(struct platform_device *pdev)
         }else{
             strcpy(device_data->label, name);
             dev_info(dev, "GPIO label = %s\n", device_data->label);
+        }
+
+        /* Get GPIO as a reference to GPIO descriptor */
+        device_data->desc = devm_fwnode_get_gpiod_from_child(dev, "bone", &child->fwnode, \
+                                                           GPIOD_ASIS, device_data->label);
+        if(IS_ERR(device_data->desc)){
+            ret = PTR_ERR(device_data->desc); //Extract error
+            if(ret == -ENOENT)
+                dev_err(dev,"No GPIO has been assigned to the requested function and/or index\n");
+            return ret;
+        }
+
+        /* Set the gpio direction to output */
+        ret = gpiod_direction_output(device_data->desc, 0);
+        if(ret){
+            dev_err(dev, "gpio direction set failed \n");
+            return ret;
         }
 
         i++; 
