@@ -75,6 +75,40 @@ int __init gpio_sysfs_init(void)
 
 int gpio_sysfs_probe(struct platform_device *pdev)
 {
+    const char *name;
+    int i = 0;
+
+    struct device *dev = &pdev->dev;
+
+    /* Parent device node */
+    struct device_node *parent = pdev->dev.of_node;
+
+    /* Child device node */
+    struct device_node *child = NULL;
+
+    struct device_private_data *device_data;
+
+    for_each_available_child_of_node(parent, child)
+    {
+        /* Allocate memory for device private data */
+        device_data = devm_kzalloc(dev, sizeof(*device_data), GFP_KERNEL);
+        if(!device_data){
+            dev_err(dev, "Cannot allocate memory\n");
+            return -ENOMEM;
+        }
+
+        /* Fill with data device private data structer from device tree node */
+        if(of_property_read_string(child, "label", &name)){
+            dev_warn(dev, "Missing lable information \n");
+            snprintf(device_data->label, sizeof(device_data->label), "unkngpio%d", i);
+        }else{
+            strcpy(device_data->label, name);
+            dev_info(dev, "GPIO label = %s\n", device_data->label);
+        }
+
+        i++; 
+    } 
+
     return 0;
 }
 
