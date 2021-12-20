@@ -37,7 +37,10 @@ struct driver_private_data
 {
     int total_devices;
     struct class *class_gpio;
+    struct device **dev;
 };
+
+struct driver_private_data gpio_driver_private_data;
 
 /* Create device attributes */
 ssize_t direction_show(struct device *dev, struct device_attribute *attr, \
@@ -74,7 +77,24 @@ static DEVICE_ATTR_RW(direction);
 static DEVICE_ATTR_RW(value);
 static DEVICE_ATTR_RO(label);
 
-struct driver_private_data gpio_driver_private_data;
+static struct attribute *gpio_attrs[] = 
+{
+    &dev_attr_direction.attr,
+    &dev_attr_value.attr,
+    &dev_attr_label.attr,
+    NULL
+};
+
+static struct attribute_group gpio_attr_group =
+{
+    .attrs = gpio_attrs
+};
+
+static const struct attribute_group *gpio_attr_groups[] = 
+{
+    &gpio_attr_group,
+    NULL
+};
 
 struct of_device_id gpio_device_match[] = 
 {
@@ -125,6 +145,17 @@ int gpio_sysfs_probe(struct platform_device *pdev)
 
     struct device_private_data *device_data;
 
+    gpio_driver_private_data.total_devices = of_get_child_count(parent);
+    if(!gpio_driver_private_data.total_devices){
+        dev_err(dev, "No devices found\n");
+        return -EINVAL;
+    }
+
+    dev_info(dev, "Total devices found = %d\n", gpio_driver_private_data.total_devices);
+
+    gpio_driver_private_data.dev = devm_kzalloc(dev, sizeof(struct device *) * \
+            gpio_driver_private_data.total_devices , GFP_KERNEL);
+
     for_each_available_child_of_node(parent, child)
     {
         /* Allocate memory for device private data */
@@ -158,6 +189,14 @@ int gpio_sysfs_probe(struct platform_device *pdev)
         if(ret){
             dev_err(dev, "gpio direction set failed \n");
             return ret;
+        }
+
+        /* Create devices under /sys/class/bone_gpios */
+        gpio_driver_private_data.dev[i] = device_create_with_groups(gpio_driver_private_data.class_gpio, \
+                dev, 0, device_data, gpio_attr_groups, device_data->label);
+        if(IS_ERR(gpio_driver_private_data.dev[i])){
+            dev_err(dev, "Error in device_create \n");
+            return PTR_ERR(gpio_driver_private_data.dev[i]);
         }
 
         i++; 
