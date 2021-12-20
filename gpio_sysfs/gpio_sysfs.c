@@ -39,6 +39,41 @@ struct driver_private_data
     struct class *class_gpio;
 };
 
+/* Create device attributes */
+ssize_t direction_show(struct device *dev, struct device_attribute *attr, \
+                        char *buf)
+{
+    return 0;
+}
+
+ssize_t direction_store(struct device *dev, struct device_attribute *attr, \
+                        const char *buf, size_t count)
+{
+    return 0;
+}
+
+ssize_t value_show(struct device *dev, struct device_attribute *attr, \
+                        char *buf)
+{
+    return 0;
+}
+
+ssize_t value_store(struct device *dev, struct device_attribute *attr, \
+                        const char *buf, size_t count)
+{
+    return 0;
+}
+
+ssize_t label_show(struct device *dev, struct device_attribute *attr, \
+                        char *buf)
+{
+    return 0;
+}
+
+static DEVICE_ATTR_RW(direction);
+static DEVICE_ATTR_RW(value);
+static DEVICE_ATTR_RO(label);
+
 struct driver_private_data gpio_driver_private_data;
 
 struct of_device_id gpio_device_match[] = 
@@ -98,8 +133,6 @@ int gpio_sysfs_probe(struct platform_device *pdev)
             dev_err(dev, "Cannot allocate memory\n");
             return -ENOMEM;
         }
-
-        /* Read gpio properties from device tree file */
 
         /* Fill with data device private data structer from device tree node */
         if(of_property_read_string(child, "label", &name)){
