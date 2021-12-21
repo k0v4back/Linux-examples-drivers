@@ -46,31 +46,67 @@ struct driver_private_data gpio_driver_private_data;
 ssize_t direction_show(struct device *dev, struct device_attribute *attr, \
                         char *buf)
 {
-    return 0;
+    struct device_private_data *device_data = dev_get_drvdata(dev);
+
+    char *p_direction = NULL;
+    int direction = gpiod_get_direction(device_data->desc);
+
+    if(direction < 0)
+        return direction;
+    
+    /* if dir = 0 , then show "out". if dir =1 , then show "in" */
+    p_direction = (direction == 0) ? "out":"in";
+
+    return sprintf(buf, "%s\n", p_direction);
 }
 
 ssize_t direction_store(struct device *dev, struct device_attribute *attr, \
                         const char *buf, size_t count)
 {
+    int ret;
+    struct device_private_data *device_data = dev_get_drvdata(dev);
+
+    if(sysfs_streq(buf, "in") )
+        ret = gpiod_direction_input(device_data->desc);
+    else if (sysfs_streq(buf, "out"))
+        ret = gpiod_direction_output(device_data->desc, 0);
+    else
+        ret = -EINVAL;
+
+    return ret ? : count;
+
     return 0;
 }
 
 ssize_t value_show(struct device *dev, struct device_attribute *attr, \
                         char *buf)
 {
-    return 0;
+    struct device_private_data *device_data = dev_get_drvdata(dev);
+    int value = gpiod_get_value(device_data->desc);
+
+    return sprintf(buf,"%d\n",value);
 }
 
 ssize_t value_store(struct device *dev, struct device_attribute *attr, \
                         const char *buf, size_t count)
 {
-    return 0;
+    struct device_private_data *device_data = dev_get_drvdata(dev);
+    int ret;
+    long value;
+    
+    ret = kstrtol(buf, 0, &value);
+    if(ret)
+        return ret;    
+    gpiod_set_value(device_data->desc, value);
+
+    return count;
 }
 
 ssize_t label_show(struct device *dev, struct device_attribute *attr, \
                         char *buf)
 {
-    return 0;
+    struct device_private_data *device_data = dev_get_drvdata(dev);
+    return sprintf(buf, "%s\n", device_data->label);
 }
 
 static DEVICE_ATTR_RW(direction);
