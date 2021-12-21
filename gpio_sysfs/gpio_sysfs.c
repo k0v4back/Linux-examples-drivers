@@ -13,18 +13,6 @@
 int gpio_sysfs_probe(struct platform_device *);
 int gpio_sysfs_remove(struct platform_device *);
 
-/*
-int platform_driver_open(struct inode *inode, struct file *filp);
-ssize_t platform_driver_write(struct file *filp, const char __user *buff, size_t count, loff_t *f_pos);
-ssize_t platform_driver_read(struct file *filp, char __user *buff, size_t count, loff_t *f_pos);
-int platform_driver_release(struct inode *inode, struct file *filp);
-loff_t platform_driver_llseek(struct file *filp, loff_t offset, int whence);
-
-struct cdev platform_driver_cdev;
-struct class *class_platform_driver;
-struct device *device_platform_driver;
-*/
-
 /* Device private data structure */
 struct device_private_data
 {
@@ -243,6 +231,14 @@ int gpio_sysfs_probe(struct platform_device *pdev)
 
 int gpio_sysfs_remove(struct platform_device *pdev)
 {
+    int i;
+    
+    dev_info(&pdev->dev, "Remove called\n");
+
+    for(i = 0; i < gpio_driver_private_data.total_devices; i++){
+        device_unregister(gpio_driver_private_data.dev[i]);
+    }
+
     return 0;
 }
 
